@@ -1,0 +1,30 @@
+{
+  "name": "vibe-swift-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vibe Swift: AI-driven reverse-engineering and cloning engine integrating morluto/rea",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@vibe-swift/web",
+    "build": "npm run build --workspaces --if-present",
+    "build:core": "npm run build --workspace=@vibe-swift/core",
+    "build:web": "npm run build --workspace=@vibe-swift/web",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "node -e \"const fs = require('fs'); ['node_modules', '.next', 'dist'].forEach(dir => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} });\""
+  },
+  "keywords": [
+    "vibe-swift",
+    "reverse-engineering",
+    "cloning-engine",
+    "morluto-rea",
+    "nextjs",
+    "tailwind",
+    "ai-agents"
+  ],
+  "author": "Vibe Swift Team",
+  "license": "MIT"
+}
