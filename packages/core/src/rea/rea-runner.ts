@@ -92,7 +92,7 @@ export class REARunner {
       let timedOut = false;
 
       const proc = spawn(commandName, args, {
-        shell: true,
+        shell: false,
         env: { ...process.env, ...options.env },
       });
 

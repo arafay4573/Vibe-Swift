@@ -35,10 +35,10 @@ export const SAMPLE_SAAS_EVIDENCE: REAEvidence = {
       status: 200,
       contentType: 'application/json',
       responsePreview: JSON.stringify({
-        activeUsers: '142,890',
-        latencyP99: '18ms',
+        modulesParsed: 6,
+        routesDetected: 4,
         uptime: '99.99%',
-        throughput: '3.4M req/s',
+        pipelineFidelity: '100%',
       }),
       initiator: 'components/analytics/metrics-grid.tsx',
     },

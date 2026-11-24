@@ -33,7 +33,7 @@ export class CodeGenerator {
 
     // 4. Extracted & Reconstructed UI Components
     for (const comp of blueprint.components) {
-      files.push(this.generateComponentFile(comp, blueprint.theme));
+      files.push(this.generateComponentFile(comp, blueprint.theme, blueprint));
     }
 
     // 5. API Routes
@@ -329,14 +329,14 @@ ${elements}
     return { path, content, type: 'page' };
   }
 
-  private static generateComponentFile(comp: VibeComponent, theme: ThemeBlueprint): GeneratedFile {
+  private static generateComponentFile(comp: VibeComponent, theme: ThemeBlueprint, blueprint?: VibeBlueprint): GeneratedFile {
     const fileName = `components/${this.toKebabCase(comp.name)}.tsx`;
     const iconImports = comp.lucideIcons.length > 0
       ? `import { ${comp.lucideIcons.join(', ')} } from "lucide-react";\n`
       : '';
 
     const clientDirective = comp.isClientComponent ? '"use client";\n\n' : '';
-    const body = this.renderComponentTemplate(comp);
+    const body = this.renderComponentTemplate(comp, blueprint);
 
     const content = `${clientDirective}import React${comp.isClientComponent ? ', { useState }' : ''} from "react";
 ${iconImports}
@@ -351,7 +351,11 @@ ${body}
     return { path: fileName, content, type: 'component', description: decodeHtmlEntities(comp.description) };
   }
 
-  private static renderComponentTemplate(comp: VibeComponent): string {
+  private static renderComponentTemplate(comp: VibeComponent, blueprint?: VibeBlueprint): string {
+    const brand = blueprint?.name ? blueprint.name.split('—')[0].trim().replace(/"/g, '\\"') : 'VIBE SWIFT';
+    const heroTitle = blueprint?.metadata?.title ? blueprint.metadata.title.replace(/"/g, '\\"') : 'Deconstruct web architectures.';
+    const heroDesc = blueprint?.metadata?.description ? blueprint.metadata.description.replace(/"/g, '\\"') : 'Reverse-engineered with Vibe Swift and morluto/rea.';
+
     switch (comp.category) {
       case 'navigation':
         return `  const [isOpen, setIsOpen] = useState(false);
@@ -361,7 +365,7 @@ ${body}
       <div className="container mx-auto flex h-14 items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 text-sm font-semibold text-white tracking-wider uppercase font-mono">
-            <span>VIBE SWIFT</span>
+            <span>${brand}</span>
           </a>
         </div>
 
@@ -412,12 +416,11 @@ ${body}
         </div>
 
         <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-white mb-6 leading-tight">
-          Deconstruct web architectures. <br />
-          <span className="text-zinc-400">Rebuilt with precision engineering.</span>
+          ${heroTitle}
         </h1>
 
         <p className="text-base text-zinc-400 mb-8 max-w-2xl leading-relaxed">
-          Ingest target web applications, static bundles, or live sessions. Extract clean component trees, styles, and API contracts into production Next.js & Tailwind repositories.
+          ${heroDesc}
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -439,12 +442,17 @@ ${body}
     </section>
   );`;
 
-      case 'metric':
+      case 'metric': {
+        const compCount = blueprint?.summaryStats?.totalComponents || 12;
+        const routeCount = blueprint?.summaryStats?.totalRoutes || 3;
+        const classesCount = blueprint?.summaryStats?.totalTailwindClasses || '180+';
+        const apiCount = blueprint?.summaryStats?.totalEndpoints || 4;
+
         return `  const stats = [
-    { label: "P99 Telemetry", value: "14ms", status: "Nominal" },
-    { label: "Components Mapped", value: "250K+", status: "Verified" },
-    { label: "AST Fidelity", value: "99.8%", status: "Zero Drift" },
-    { label: "Pipeline Speed", value: "1.2s", status: "Optimized" },
+    { label: "Components Mapped", value: "${compCount} Modules", status: "Verified" },
+    { label: "Routes Extracted", value: "${routeCount} Routes", status: "Active" },
+    { label: "Tailwind Classes", value: "${classesCount}", status: "Clean AST" },
+    { label: "API Endpoints", value: "${apiCount} Handlers", status: "Operational" },
   ];
 
   return (
@@ -462,6 +470,7 @@ ${body}
       </div>
     </section>
   );`;
+      }
 
       case 'feature':
         return `  const features = [

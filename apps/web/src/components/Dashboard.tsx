@@ -8,6 +8,9 @@ import { BlueprintExplorer } from '@/components/BlueprintExplorer';
 import { LiveReconstructedPreview } from '@/components/LiveReconstructedPreview';
 import { CodeViewer } from '@/components/CodeViewer';
 import { EvidenceViewer } from '@/components/EvidenceViewer';
+import { RefinementChat } from '@/components/RefinementChat';
+import { GitHubPushModal } from '@/components/GitHubPushModal';
+import { downloadProjectZip } from '@/lib/export-project';
 import {
   Globe,
   Layers,
@@ -21,6 +24,8 @@ import {
   Palette,
   Check,
   RotateCcw,
+  Download,
+  Github,
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -50,6 +55,10 @@ export function Dashboard({ initialData }: DashboardProps) {
 
   // Clone result state initialized from server prop
   const [cloneResult, setCloneResult] = useState<FullCloneResult>(initialData);
+
+  // Export & modal state
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isExportingZip, setIsExportingZip] = useState(false);
 
   // Brand customization state
   const [showCustomizer, setShowCustomizer] = useState(false);
@@ -253,9 +262,81 @@ export function Dashboard({ initialData }: DashboardProps) {
     });
   };
 
+  const handleExportZip = async () => {
+    if (!cloneResult?.project) return;
+    setIsExportingZip(true);
+    try {
+      await downloadProjectZip(cloneResult.project);
+    } catch (err) {
+      console.error('ZIP export error:', err);
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
+  const handleRefinement = (
+    updatedFiles: Record<string, string>,
+    blueprintPatches: Record<string, unknown>,
+    assistantMessage: string
+  ) => {
+    if (!cloneResult) return;
+
+    // Merge updated files into project file list
+    const fileMap = new Map<string, { path: string; content: string; type: any; description?: string }>();
+    for (const f of cloneResult.project.files) {
+      fileMap.set(f.path, f);
+    }
+    for (const [path, content] of Object.entries(updatedFiles)) {
+      const existing = fileMap.get(path);
+      if (existing) {
+        fileMap.set(path, { ...existing, content });
+      } else {
+        fileMap.set(path, {
+          path,
+          content,
+          type: path.startsWith('components/') ? 'component' : path.startsWith('app/') ? 'page' : 'config',
+        });
+      }
+    }
+    const mergedFiles = Array.from(fileMap.values());
+
+    // Merge blueprint patches
+    const newBlueprint: VibeBlueprint = {
+      ...cloneResult.blueprint,
+      ...blueprintPatches,
+      metadata: {
+        ...cloneResult.blueprint.metadata,
+        ...((blueprintPatches.metadata as any) || {}),
+      },
+    };
+
+    if (blueprintPatches.name) {
+      setBrandParams((prev) => ({
+        ...prev,
+        brandName: String(blueprintPatches.name),
+      }));
+    }
+    if (blueprintPatches.metadata && (blueprintPatches.metadata as any).title) {
+      setBrandParams((prev) => ({
+        ...prev,
+        headline: String((blueprintPatches.metadata as any).title),
+      }));
+    }
+
+    setCloneResult({
+      ...cloneResult,
+      blueprint: newBlueprint,
+      project: {
+        ...cloneResult.project,
+        blueprint: newBlueprint,
+        files: mergedFiles,
+      },
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-7">
-      {/* 3. Header / Center Hero Statement */}
+      {/* Header / Center Hero Statement */}
       <div className="text-center max-w-3xl mx-auto space-y-3 pt-2 pb-2">
         <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-zinc-800 bg-zinc-900/60 font-mono text-[10px] text-zinc-400 tracking-wider">
           <Terminal className="h-3 w-3 text-zinc-400" />
@@ -503,7 +584,7 @@ export function Dashboard({ initialData }: DashboardProps) {
       {/* Main Results Workspace */}
       {cloneResult && (
         <div className="space-y-4">
-          {/* Main Workspace Navigation Tabs */}
+          {/* Main Workspace Navigation Tabs + Export Actions Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-2.5">
             <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded border border-zinc-800 font-mono text-xs">
               <button
@@ -555,16 +636,35 @@ export function Dashboard({ initialData }: DashboardProps) {
               </button>
             </div>
 
-            <div className="text-xs text-zinc-500 font-mono truncate max-w-[320px]">
-              TARGET: <span className="text-zinc-300">{decodeHtmlEntities(cloneResult.target)}</span>
+            {/* Studio Export Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportZip}
+                disabled={isExportingZip}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-mono font-medium transition-colors disabled:opacity-50"
+                title="Bundle complete runnable Next.js + Tailwind project into a .zip archive"
+              >
+                <Download className="h-3.5 w-3.5 text-zinc-400" />
+                <span>{isExportingZip ? 'BUNDLING...' : 'EXPORT .ZIP'}</span>
+              </button>
+
+              <button
+                onClick={() => setIsGitHubModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-200 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-mono font-semibold transition-colors shadow-sm"
+                title="Push project repository directly to GitHub"
+              >
+                <Github className="h-3.5 w-3.5" />
+                <span>PUSH TO GITHUB</span>
+              </button>
             </div>
           </div>
 
-          {/* Tab Viewport */}
+          {/* Active Tab Viewport */}
           <div>
             {activeTab === 'preview' && (
               <LiveReconstructedPreview
                 blueprint={cloneResult.blueprint}
+                project={cloneResult.project}
                 brandOverrides={brandParams}
               />
             )}
@@ -581,7 +681,25 @@ export function Dashboard({ initialData }: DashboardProps) {
               <EvidenceViewer evidence={cloneResult.evidence} />
             )}
           </div>
+
+          {/* Interactive Studio Build & Refinement Prompt Box (Chat Interface) */}
+          <div className="pt-2">
+            <RefinementChat
+              cloneResult={cloneResult}
+              brandParams={brandParams}
+              onRefinement={handleRefinement}
+            />
+          </div>
         </div>
+      )}
+
+      {/* GitHub Push Modal */}
+      {cloneResult?.project && (
+        <GitHubPushModal
+          isOpen={isGitHubModalOpen}
+          onClose={() => setIsGitHubModalOpen(false)}
+          project={cloneResult.project}
+        />
       )}
     </div>
   );

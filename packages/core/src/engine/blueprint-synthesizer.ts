@@ -299,9 +299,10 @@ export class BlueprintSynthesizer {
         method: 'GET',
         description: 'System telemetry mock endpoint',
         mockResponse: {
-          activeNodes: 1240,
-          latency: '14ms',
-          status: 'healthy',
+          target: evidence.source.target,
+          status: 'operational',
+          frameworks: evidence.metadata.detectedFrameworks,
+          viewport: evidence.metadata.viewport,
         },
       },
     ];
